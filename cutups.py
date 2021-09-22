@@ -1,33 +1,46 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 '''
-Does cutups on text passed through standard input.
+Does cutups on text passed through standard input, or on a filename passed as an argument.
 
-The input can be text on the command line:
-e.g. echo "Example text Example text Example text" | ./cutups.py
-
-Or a file:
-e.g. cat "example_text.txt" | ./cutups.py
+Text can be piped to standard input, or a text file can be provided as an argument.
 '''
 
-import fileinput, random
+import argparse
+import fileinput
+import random
 
 
-raw_text = ""
-for line in fileinput.input():
-    raw_text += line
+def cutup(text, min_chunk_size, max_chunk_size):
+    words = text.split()
+    chunks = []
+    ind = 0
 
-words = raw_text.split()
-min_chunk_size = 1
-max_chunk_size = 5
-chunks = []
-ind = 0
+    while ind < len(words):
+        chunk_size = random.randint(min_chunk_size, max_chunk_size)
+        chunks.append(' '.join(words[ind:(ind+chunk_size)]))
+        ind += chunk_size
 
-while ind < len (words):
-    chunk_size = random.randint(min_chunk_size, max_chunk_size)
-    chunks.append(' '.join(words[ind:(ind+chunk_size)]))
-    ind += chunk_size
+    random.shuffle(chunks)
+    output = ' '.join(chunks)
 
-random.shuffle(chunks)
-output = ' '.join(chunks)
+    return output
 
-print(output)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('file', nargs='?', help='file containing text to cut up')
+    chunk_size_arg_help = 'text will be cut up into chunks of size `min-chunk-size` to `max-chunk-size`'
+    parser.add_argument('--min-chunk-size', '-m', default=1, type=int, help=chunk_size_arg_help)
+    parser.add_argument('--max-chunk-size', '-M', default=5, type=int, help=chunk_size_arg_help)
+
+    args = parser.parse_args()
+    if args.min_chunk_size > args.max_chunk_size:
+        raise ValueError('`min-chunk-size` cannot be larger than `max-chunk-size`')
+    
+    if args.file is None:
+        text = ' '.join(line for line in fileinput.input())
+    else:
+        with open(args.file, 'r') as f:
+            text = f.read()
+
+    print(cutup(text, args.min_chunk_size, args.max_chunk_size))
