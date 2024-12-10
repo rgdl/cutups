@@ -1,12 +1,14 @@
-
-Does cutups on input text. Text can be read from standard input, or a text file can be provided as an argument.
-
-Input text is split into chunks, which are randomly reordered. The size of these chunks can be controlled with command line arguments
+Does cutups on the contents of 1 or 2 input files.
 
 ```bash
-./cutups.py text-file.txt
-
-# OR
-
-echo "here is some text to cut up" | ./cutups.py 
+ Usage: cutups.py [OPTIONS] FILES...                                                                       
+                                                                                                           
+╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    files      FILES...  [default: None] [required]                                                    │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --paragraph-size                          INTEGER  [default: 4]                                         │
+│ --random-offset     --no-random-offset             [default: random-offset]                             │
+│ --help                                             Show this message and exit.                          │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
