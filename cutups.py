@@ -1,69 +1,70 @@
 #!/usr/bin/env python
-'''
-Does cutups on input text. Text can be read from standard input, or a text file can be provided as an argument.
-
-Input text is split into chunks, which are randomly reordered. The size of these chunks can be controlled with command line arguments
-'''
-
-import argparse
+"""A CLI using typer to perform cutups on text."""
 import random
-import sys
+import re
+from itertools import cycle
+from pathlib import Path
+
+import typer
 
 
-def cutup(text: str, min_chunk_size: int, max_chunk_size: int) -> str:
-    """
-    Cut text into chunks, each containing a number of words in the range [min_chunk_size, max_chunk_size]
-
-    These chunks will then be re-joined in a random order and returned as a string
-    """
-    words = text.split()
-    chunks = []
-    ind = 0
-
-    while ind < len(words):
-        chunk_size = random.randint(min_chunk_size, max_chunk_size)
-        chunks.append(' '.join(words[ind:(ind+chunk_size)]))
-        ind += chunk_size
-
-    random.shuffle(chunks)
-    return ' '.join(chunks)
-
-
-def add_line_breaks(text: str, words_per_line: int) -> str:
-    """
-    Add line breaks, such that every line ends up words_per_line words long
-    """
-    words = text.split()
-    chunks = []
-    ind = 0
-
-    while ind < len(words):
-        chunks.append(' '.join(words[ind:(ind+words_per_line)]))
-        chunks.append('\n')
-        ind += words_per_line
-
-    return ''.join(chunks)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('file', nargs='?', help='file containing text to cut up')
-    chunk_size_arg_help = 'text will be cut up into chunks of size `min-chunk-size` to `max-chunk-size`'
-    parser.add_argument('--min-chunk-size', '-m', default=1, type=int, help=chunk_size_arg_help)
-    parser.add_argument('--max-chunk-size', '-M', default=5, type=int, help=chunk_size_arg_help)
-    parser.add_argument('--words-per-line', type=int, help='specify an integer value to add line breaks to the output')
-
-    args = parser.parse_args()
-    if args.min_chunk_size > args.max_chunk_size:
-        raise ValueError('`min-chunk-size` cannot be larger than `max-chunk-size`')
+def format(text: str, line_length: int = 30) -> list[str]:
+    """Remove existing line breaks and format into a block of lines.
     
-    if args.file is None:
-        text = ' '.join(line for line in sys.stdin)
-    else:
-        with open(args.file, 'r') as f:
-            text = f.read()
+    N.B. this is a basic implementation, which allows lines to be a little
+    longer than `line_length`.
+    """
+    output: list[str] = []
+    line_words: list [str] = []
 
-    result = cutup(text, args.min_chunk_size, args.max_chunk_size)
-    if args.words_per_line is not None:
-        result = add_line_breaks(result, args.words_per_line)
-    print(result)
+    for word in re.split(r"\s+", text):
+        line_words.append(word)
+        line = " ".join(line_words)
+
+        if len(line) > line_length:
+            output.append(line)
+            line_words = []
+
+    return output
+
+
+def main(
+    files: list[Path], paragraph_size: int = 4, random_offset: bool = True
+) -> None:
+    match len(files):
+        case 1:
+            file1 = files[0]
+            file2 = files[0]
+        case 2:
+            file1, file2 = files
+        case _:
+            raise ValueError("Can't handle 3 or more input files")
+
+    text1 = format(file1.read_text())
+    text2 = format(file2.read_text())
+
+    if random_offset:
+        offset1 = random.randint(0, len(text1) - 1)
+        text1 = text1[offset1:] + text1[:offset1]
+        offset2 = random.randint(0, len(text2) - 1)
+        text2 = text2[offset2:] + text2[:offset2]
+
+    if len(text1) > len(text2):
+        text_iter1 = iter(text1)
+        text_iter2 = cycle(text2)
+    elif len(text1) < len(text2):
+        text_iter1 = cycle(text1)
+        text_iter2 = iter(text2)
+    else:
+        text_iter1 = iter(text1)
+        text_iter2 = iter(text2)
+
+    for i, (l1, l2) in enumerate(zip(text_iter1, text_iter2)):
+        if i > 0 and i % paragraph_size == 0:
+            print()
+        print(l1, l2)
+
+
+if __name__ == "__main__":
+    typer.run(main)
+
